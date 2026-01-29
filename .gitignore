@@ -6,3 +6,4 @@ __pycache__/*
 chem_benchmark/__pycache__/*
 scripts/*
 run_scripts/*
+total_results_all_models.csv
