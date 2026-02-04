@@ -1,0 +1,10 @@
+data:
+  path: example_datasets/REL-A3
+  config: center_singleDistribute_Three_shuffle_n_3_maxval_1000
+  gridsize: 3
+  nattr: 3
+  nshow: 3
+  ntest: 125
+  task: REL-A3
+  num_samples: 125
+  maxval: 1000

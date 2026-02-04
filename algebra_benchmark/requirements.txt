@@ -1,0 +1,4 @@
+# Algebra benchmark: numerical RPM/RPT only.
+# Python 3.10. Use with the rpmllm mamba environment.
+
+pyyaml>=6.0
