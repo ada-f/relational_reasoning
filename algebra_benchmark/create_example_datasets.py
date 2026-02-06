@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from tasks import get_valid_tasks
+from algebra_benchmark.tasks import get_valid_tasks
 
 
 def main() -> int:

@@ -14,6 +14,8 @@ Dependencies:
 import os
 import json
 import random
+import tempfile
+from pathlib import Path
 from typing import Dict, List, Tuple, Any, Optional
 
 import pyvolve
@@ -21,7 +23,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from ete3 import Tree
-from random_tree import RandomTree
+from .random_tree import RandomTree
 
 
 # ---------------------------------------------------------------------
@@ -61,15 +63,88 @@ def simulate_alignment_with_pyvolve(
     model = pyvolve.Model("nucleotide", model_kwargs)
     partition = pyvolve.Partition(models=model, size=seq_len)
 
-    evolver = pyvolve.Evolver(tree=tree, partitions=partition, seqfile=seqfile)
-    evolver()  # writes to seqfile
+    # Use temporary file if seqfile is a simple name (no directory), otherwise use provided path
+    # This avoids conflicts when multiple processes run simultaneously
+    seqfile_dir = os.path.dirname(seqfile)
+    use_temp = not os.path.isabs(seqfile) and (not seqfile_dir or seqfile_dir == '.')
+    temp_file_path = None
+    
+    if use_temp:
+        # Create a temporary file path
+        temp_file_handle = tempfile.NamedTemporaryFile(
+            mode='w', suffix='.fasta', delete=False
+        )
+        temp_file_path = temp_file_handle.name
+        temp_file_handle.close()
+        seqfile_str = temp_file_path
+    else:
+        # Convert to absolute path to avoid working directory issues
+        seqfile_path = Path(seqfile).resolve()
+        seqfile_path.parent.mkdir(parents=True, exist_ok=True)
+        seqfile_str = str(seqfile_path)
+    
+    # Ensure file doesn't exist - Pyvolve should create it
+    if os.path.exists(seqfile_str):
+        os.unlink(seqfile_str)
+
+    # Create evolver and run simulation
+    try:
+        # Try creating evolver without seqfile first, then pass it when calling
+        try:
+            evolver = pyvolve.Evolver(tree=tree, partitions=partition)
+            evolver(seqfile=seqfile_str)
+        except (TypeError, Exception):
+            # If that fails, try with seqfile in constructor
+            evolver = pyvolve.Evolver(
+                tree=tree, 
+                partitions=partition, 
+                seqfile=seqfile_str
+            )
+            evolver()
+    except Exception as e:
+        # Clean up temp file if we created one
+        if use_temp and temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+        raise RuntimeError(f"Pyvolve simulation failed: {e}") from e
+
+    # Verify the file was created
+    if not os.path.exists(seqfile_str):
+        # Check if Pyvolve wrote to current working directory
+        filename_only = os.path.basename(seqfile_str)
+        cwd_file = os.path.join(os.getcwd(), filename_only)
+        if os.path.exists(cwd_file):
+            seqfile_str = cwd_file
+        else:
+            # Clean up temp file if we created one
+            if use_temp and temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.unlink(temp_file_path)
+                except:
+                    pass
+            raise RuntimeError(f"Pyvolve failed to create output file: {seqfile_str}")
 
     # Load the alignment back into memory as {taxon: sequence}
     alignment: Dict[str, str] = {}
-    for record in SeqIO.parse(seqfile, "fasta"):
-        alignment[record.id] = str(record.seq)
+    try:
+        for record in SeqIO.parse(seqfile_str, "fasta"):
+            alignment[record.id] = str(record.seq)
+    except Exception as parse_error:
+        raise RuntimeError(f"Failed to parse FASTA file from Pyvolve: {parse_error}") from parse_error
+    finally:
+        # Clean up temp file after reading
+        if use_temp and temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
 
-    # Also return the canonical Newick string (may be useful for prompts)
+    # Validate that alignment is not empty
+    if not alignment:
+        raise RuntimeError(f"Pyvolve created empty alignment from file: {seqfile_str}")
+
     return alignment, newick_str
 
 def choose_disjoint_clades(
@@ -352,8 +427,20 @@ def inject_convergent_blocks_tree_aware(
     if rng is None:
         rng = random.Random()
 
+    # Validate alignment is not empty
+    if not alignment:
+        raise ValueError("Alignment is empty; cannot inject convergent blocks.")
+
     all_taxa = list(alignment.keys())
-    seq_len = len(next(iter(alignment.values())))
+    if not all_taxa:
+        raise ValueError("Alignment has no taxa; cannot inject convergent blocks.")
+
+    # Get sequence length safely
+    try:
+        seq_len = len(next(iter(alignment.values())))
+    except StopIteration:
+        raise ValueError("Alignment is empty; cannot inject convergent blocks.")
+
     seq_arrays: Dict[str, List[str]] = {t: list(seq) for t, seq in alignment.items()}
 
     # Validate that all taxa in taxa_list are in the alignment
@@ -593,6 +680,14 @@ def generate_homoplasy_llm_dataset(
         seqfile=temp_seqfile,
     )
 
+    # Validate alignment is not empty
+    if not alignment:
+        raise RuntimeError(
+            f"simulate_alignment_with_pyvolve returned empty alignment.\n"
+            f"  Tree: {newick_tree[:100]}...\n"
+            f"  Sequence length: {seq_len}"
+        )
+
     # Sample n_convergent_taxa that are mutually distant in the tree
     taxa_list = choose_distant_taxa(
         newick_str,
@@ -610,6 +705,10 @@ def generate_homoplasy_llm_dataset(
         rng=rng,
     )
 
+    # Validate the output alignment
+    if not alignment_with_homoplasy:
+        raise RuntimeError("inject_convergent_blocks_tree_aware returned empty alignment.")
+    
     seq_len_check = len(next(iter(alignment_with_homoplasy.values())))
 
 

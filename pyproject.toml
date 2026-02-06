@@ -1,0 +1,23 @@
+[project]
+name = "relational-reasoning"
+version = "0.1.0"
+description = "Relational reasoning benchmarks for chemistry, biology, and algebra"
+requires-python = ">=3.10,<3.12"
+dependencies = [
+    "rdkit-pypi>=2023.3.1b1",
+    "requests>=2.31.0",
+    "pyvolve>=1.0.3",
+    "biopython>=1.81",
+    "ete3>=3.1.3",
+    "six>=1.16.0",  # Required by ete3
+    "pyyaml>=6.0",
+    "numpy>=1.24.0,<2.0",  # numpy<2.0 required for rdkit-pypi compatibility
+    "tqdm>=4.65.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Note: UV cache/data/state directories are configured via environment variables
+# See setup_uv_env.sh and UV_SETUP.md for details

@@ -10,8 +10,8 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from format import validate_sample
-from tasks import RULE_TO_TASK, TASK_TO_RULE
+from algebra_benchmark.format import validate_sample
+from algebra_benchmark.tasks import RULE_TO_TASK, TASK_TO_RULE
 
 N_CHOICES = 8
 N_CONTEXT_PANELS = 8

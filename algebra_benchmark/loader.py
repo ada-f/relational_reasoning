@@ -14,8 +14,8 @@ try:
 except ImportError:
     yaml = None
 
-from config_schema import validate_config
-from format import load_sample_from_dataset
+from algebra_benchmark.config_schema import validate_config
+from algebra_benchmark.format import load_sample_from_dataset
 
 
 def load_config(config_path: str | Path) -> dict[str, Any]:

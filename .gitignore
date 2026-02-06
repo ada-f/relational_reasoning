@@ -1,9 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# UV (Python package manager)
+# Note: uv.lock should typically be committed for reproducibility (like package-lock.json)
+# Uncomment the next line if you want to ignore it:
+# uv.lock
+.uvrc  # User-specific UV configuration (contains user-specific paths)
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project-specific
 runs/*
 cache/*
 analysis_results/*
 data/*
-__pycache__/*
-chem_benchmark/__pycache__/*
 scripts/*
 run_scripts/*
 total_results_all_models.csv
+
+# Temporary files
+*.fasta
+*.txt
+*.log
+*.tmp
+=*
+
+# Test outputs
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/

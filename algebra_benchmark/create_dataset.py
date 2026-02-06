@@ -12,9 +12,9 @@ import json
 import os
 from pathlib import Path
 
-from config_schema import build_data_config, validate_config
-from generators import generate_dataset
-from tasks import build_config, RULE_TO_TASK
+from algebra_benchmark.config_schema import build_data_config, validate_config
+from algebra_benchmark.generators import generate_dataset
+from algebra_benchmark.tasks import build_config, RULE_TO_TASK
 
 # Default dataset filename written under output_dir
 DATASET_FILENAME = "dataset.json"
