@@ -100,8 +100,8 @@ def test_generate_samples():
     # Setup: Load molecule bank from chem_data
     # Try multiple possible paths
     possible_paths = [
-        Path("chem_data/molecule_bank_chembl_xlarge.json"),  # From project root
-        Path(__file__).parent.parent / "chem_data" / "molecule_bank_chembl_xlarge.json",  # Relative to test file
+        Path("chem_benchmark/molecule_bank_chembl_xlarge.json"),  # From project root
+        Path(__file__).parent / "molecule_bank_chembl_xlarge.json",  # Relative to test file
     ]
     
     bank_path = None
