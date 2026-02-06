@@ -408,7 +408,7 @@ If you use this work in your research, please cite:
 ```bibtex
 @article{fesser2026rel,
   title={Exploring Relational Reasoning Capabilities in LLMs with REL},
-  author={Fesser, Lukas and Ektefaie, Yasha and Fang, Ada and Kakade, Sham M. and Zitnik, Marinka},
+  author={Fesser, Lukas and Ektefaie, Yasha and Fang, Ada and Zitnik, Marinka},
   journal={},
   year={2026}
 }
