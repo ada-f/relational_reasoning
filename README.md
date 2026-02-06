@@ -160,3 +160,171 @@ All datasets follow this common structure:
   }
 }
 ```
+
+## Evaluation
+
+Each benchmark provides an `evaluate_response` function that takes a question, answer, and model response, and returns evaluation metrics.
+
+### Chemistry Benchmarks (`chem_benchmark/evaluation.py`)
+
+**Function:** `evaluate_response(question: str, answer: dict, response: str, task: Optional[str] = None) -> dict`
+
+**Response Format:**
+- **REL-C1**: Response should contain `<Yes>` or `<No>` tag
+- **REL-C2**: Response should contain `<smiles>SMILES_STRING</smiles>` tag
+- **REL-C3**: Response should contain multiple `<smiles>SMILES_STRING</smiles>` tags (one per line)
+
+**Input Format:**
+- `question`: The question text from the dataset
+- `answer`: Answer dict with task-specific fields:
+  - REL-C1: `{"label": "Yes" | "No", "molecules": [...]}`
+  - REL-C2: `{"smiles": "SMILES_STRING", "molecules": [...]}`
+  - REL-C3: `{"missing_smiles": ["SMILES1", "SMILES2", ...], "molecules": [...]}`
+- `response`: Model-generated response text
+- `task`: Optional task identifier ("REL-C1", "REL-C2", or "REL-C3")
+
+**Metrics Computed:**
+
+**REL-C1:**
+- `correct`: bool - True if predicted label matches gold label
+- `pred`: str or None - Extracted yes/no prediction
+- `gold`: str - Gold label ("Yes" or "No")
+
+**REL-C2:**
+- `correct`: bool - True if response SMILES is a substructure of correct OR correct is a substructure of response
+- `pred`: str or None - Extracted SMILES from response
+- `gold`: str - Correct SMILES
+- `response_is_substructure_of_correct`: bool - Whether response is substructure of correct
+- `correct_is_substructure_of_response`: bool - Whether correct is substructure of response
+- `overlap_metric`: float - Atom overlap metric (0.0-1.0) using Maximum Common Substructure
+
+**REL-C3:**
+- `correct`: bool - True if exact match (all predicted match all gold)
+- `pred`: list[str] - Extracted SMILES list from response
+- `gold`: list[str] - Gold SMILES list
+- `tp`: int - True positives (correctly predicted isomers)
+- `fp`: int - False positives (predicted but not in gold)
+- `fn`: int - False negatives (in gold but not predicted)
+- `precision`: float - Precision score
+- `recall`: float - Recall score
+- `f1`: float - F1 score
+
+**Note:** Both REL-C2 and REL-C3 use isomorphic SMILES matching to check if SMILES represent the same molecule (handles non-canonical SMILES). REL-C2 only considers the response correct if it represents the same molecule as the gold answer.
+
+**Example:**
+```python
+from chem_benchmark.evaluation import evaluate_response
+
+question = "Given the following list of SMILES, what is the largest..."
+answer = {"smiles": "O=CC1CCC(=O)N1", "molecules": [...]}
+response = "<smiles>O=C1CCC(C=O)N1</smiles>"
+
+result = evaluate_response(question, answer, response, task="REL-C2")
+print(result)
+# {
+#   "correct": True,
+#   "pred": "O=C1CCC(C=O)N1",
+#   "gold": "O=CC1CCC(=O)N1",
+#   "response_is_substructure_of_correct": True,
+#   "correct_is_substructure_of_response": True,
+#   "overlap_metric": 1.0
+# }
+```
+
+### Biology Benchmark (`bio_benchmark/evaluation.py`)
+
+**Function:** `evaluate_response(question: str, answer: dict, response: str, task: Optional[str] = None) -> dict`
+
+**Response Format:**
+- Response should contain "yes" or "no" (case-insensitive)
+- If "yes", response should list taxa IDs (e.g., "taxon_1", "taxon_2" or just numbers)
+
+**Input Format:**
+- `question`: The question text from the dataset
+- `answer`: Answer dict with `{"label": "yes" | "no", "taxa": [int, ...]}`
+- `response`: Model-generated response text
+- `task`: Optional task identifier (defaults to "REL-B1")
+
+**Metrics Computed:**
+- `correct`: bool - True if label matches and (for "yes" answers) there's taxa overlap
+- `pred_label`: str or None - Extracted label ("yes", "no", or None if parsing failed)
+- `gold_label`: str - Gold label ("yes" or "no")
+- `pred_taxa`: list[str] - Extracted taxa IDs from response
+- `gold_taxa`: list[int] - Gold taxa IDs
+- `precision`: float - Taxa precision (-1 if gold_taxa is empty)
+- `recall`: float - Taxa recall (-1 if gold_taxa is empty)
+- `f1`: float - Taxa F1 score (-1 if gold_taxa is empty)
+
+**Example:**
+```python
+from bio_benchmark.evaluation import evaluate_response
+
+question = "Homoplasy refers to structured convergence..."
+answer = {"label": "yes", "taxa": [15, 49, 18, 28, 20]}
+response = "Yes. The taxa involved are taxon_15, taxon_49, taxon_18, taxon_28, taxon_20."
+
+result = evaluate_response(question, answer, response, task="REL-B1")
+print(result)
+# {
+#   "correct": True,
+#   "pred_label": "yes",
+#   "gold_label": "yes",
+#   "pred_taxa": ["15", "49", "18", "28", "20"],
+#   "gold_taxa": [15, 49, 18, 28, 20],
+#   "precision": 1.0,
+#   "recall": 1.0,
+#   "f1": 1.0
+# }
+```
+
+### Algebra Benchmarks (`algebra_benchmark/evaluation.py`)
+
+**Function:** `evaluate_response(question: str, answer: dict, response: str, task: Optional[str] = None, *, n_attr: int = 1, n_return: int = 1) -> dict`
+
+**Response Format:**
+- Response should contain answer index as "Answer N" (where N is 1-8) or just a number (1-8)
+- The function extracts the answer index and converts to 0-based (0-7)
+
+**Input Format:**
+- `question`: The question text from the dataset
+- `answer`: Answer dict with `{"target": int}` (0-based index, 0-7)
+- `response`: Model-generated response text
+- `task`: Optional task identifier ("REL-A1" through "REL-A7")
+- `n_attr`: Number of attributes (for compatibility, default 1)
+- `n_return`: Number of return values (for compatibility, default 1)
+
+**Metrics Computed:**
+- `correct`: bool - True if predicted index matches gold target index
+- `pred`: int - Predicted answer index (0-7, clamped)
+- `gold`: int - Gold target index (0-7)
+
+**Example:**
+```python
+from algebra_benchmark.evaluation import evaluate_response
+
+question = "Complete the Raven's progressive matrix. Only return the missing panel index (1-8)!\n..."
+answer = {"target": 0}  # 0-based index (Answer 1 in 1-based)
+response = "Answer 1"
+
+result = evaluate_response(question, answer, response, task="REL-A1")
+print(result)
+# {
+#   "correct": True,
+#   "pred": 0,
+#   "gold": 0
+# }
+```
+
+### Running Tests
+
+Test files with example evaluations are available:
+- `chem_benchmark/test_evaluation.py` - Chemistry evaluation examples
+- `bio_benchmark/test_evaluation.py` - Biology evaluation examples
+- `algebra_benchmark/test_evaluation.py` - Algebra evaluation examples
+
+Run tests to see evaluation examples:
+```bash
+python -m chem_benchmark.test_evaluation
+python -m bio_benchmark.test_evaluation
+python -m algebra_benchmark.test_evaluation
+```
