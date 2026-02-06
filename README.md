@@ -2,7 +2,6 @@
 
 <p align="center">
   <a href="https://arxiv.org/"><img src="https://img.shields.io/badge/Paper_on-arXiv-4A90E2?style=for-the-badge&logo=arxiv&logoColor=white&labelColor=2C3E50" alt="arXiv"></a>
-  <!-- <a href="https://medea.openscientist.ai/"><img src="https://img.shields.io/badge/Project-Website-4A90E2?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=2C3E50" alt="Website"></a> -->
   <a href="https://huggingface.co/datasets/ada-f/rel"><img src="https://img.shields.io/badge/Datasets-Hugging_Face-4A90E2?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=2C3E50" alt="HuggingFace"></a>
 </p> 
 
@@ -327,6 +326,80 @@ python -m chem_benchmark.test_evaluation
 python -m bio_benchmark.test_evaluation
 python -m algebra_benchmark.test_evaluation
 ```
+
+## Generate More Questions & Answers
+
+Each benchmark domain provides scripts to generate datasets in the unified JSONL format. You can build full datasets or test with small samples.
+
+### Algebra Benchmarks
+
+**Build a dataset:**
+```bash
+python -m algebra_benchmark.build_benchmark --task REL-A1 --num_samples 100 --gridsize 3 --maxval 1000 --out REL/algebra/REL-A1.jsonl --seed 42
+```
+
+**Test generation (generates 3 samples per task):**
+```bash
+python -m algebra_benchmark.test_build_benchmark
+```
+
+**Available tasks:** REL-A1, REL-A2, REL-A3, REL-A4
+
+**Parameters:**
+- `--task`: Task identifier (REL-A1 through REL-A4)
+- `--num_samples`: Number of samples to generate
+- `--gridsize`: Matrix size (default: 3)
+- `--maxval`: Maximum value for numeric entries (default: 1000)
+- `--out`: Output JSONL file path
+- `--seed`: Random seed for reproducibility
+
+### Biology Benchmarks
+
+**Build a dataset:**
+```bash
+python -m bio_benchmark.build_benchmark --out REL/biology/REL-B1.jsonl --seed 42 --num_yes 100 --num_no 100 --seq_len 300 --num_leaves 50
+```
+
+**Test generation (generates 3 'yes' and 3 'no' samples):**
+```bash
+python -m bio_benchmark.test_build_benchmark
+```
+
+**Parameters:**
+- `--out`: Output JSONL file path
+- `--seed`: Random seed
+- `--num_yes`: Number of 'yes' examples (with homoplasy)
+- `--num_no`: Number of 'no' examples (without homoplasy)
+- `--seq_len`: Sequence length (default: 300)
+- `--num_leaves`: Number of leaves in phylogenetic tree (default: 50)
+- `--n_convergent_sites`: Number of convergent blocks for 'yes' examples (default: 5)
+- `--n_convergent_taxa`: Number of convergent taxa for 'yes' examples (default: 2)
+- `--length_convergent_block`: Length of convergent blocks (default: 5)
+
+### Chemistry Benchmarks
+
+**Build a dataset:**
+```bash
+python -m chem_benchmark.build_benchmark --out REL/chemistry/REL-C1.jsonl --seed 42 --n_values 5 10 30 --q1a_per_n 30 --q2_per_n 30 --q3_per_n 10
+```
+
+**Test generation (generates 3 samples per task):**
+```bash
+python -m chem_benchmark.test_build_benchmark
+```
+
+**Parameters:**
+- `--out`: Output JSONL file path
+- `--seed`: Random seed
+- `--n_values`: List of molecule counts (e.g., `5 10 30`)
+- `--q1a_per_n`: Number of REL-C2 (Q1a) samples per n_molecules
+- `--q1b_per_n`: Number of REL-C2 (Q1b) samples per n_molecules
+- `--q2_per_n`: Number of REL-C1 (Q2) samples per n_molecules
+- `--q3_per_n`: Number of REL-C3 (Q3) samples per n_molecules
+- `--bank_path`: Path to molecule bank file (default: `chem_benchmark/molecule_bank_chembl_xlarge.json`)
+- `--bank_size`: Size of molecule bank (default: 200)
+- `--rebuild_bank`: Rebuild the molecule bank from ChEMBL
+
 
 ## Citation
 
