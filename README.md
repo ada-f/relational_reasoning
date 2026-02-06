@@ -1,19 +1,17 @@
 # Exploring Relational Reasoning Capabilities in LLMs with REL
 
-This repository contains the code and data for the paper "Exploring Relational Reasoning Capabilities in Large Language Models". We include the code for building the datasets, running the experiments, and analyzing the results.
+<p align="center">
+  <a href="https://arxiv.org/"><img src="https://img.shields.io/badge/Paper_on-arXiv-4A90E2?style=for-the-badge&logo=arxiv&logoColor=white&labelColor=2C3E50" alt="arXiv"></a>
+  <!-- <a href="https://medea.openscientist.ai/"><img src="https://img.shields.io/badge/Project-Website-4A90E2?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=2C3E50" alt="Website"></a> -->
+  <a href="https://huggingface.co/datasets/ada-f/rel"><img src="https://img.shields.io/badge/Datasets-Hugging_Face-4A90E2?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=2C3E50" alt="HuggingFace"></a>
+</p> 
 
-## REL-A
-* RPMs for REL-A1, REL-A2, REL-A3, and REL-A4 were generated using the code available at `https://github.com/IBM/raven-large-language-models`. We use no confounders or noise.
-* We will make code for the RPTs in REL-A5, REL-A6, and REL-A7 available upon publication of the final manuscript.
+This repository contains the code and data for the paper "Exploring Relational Reasoning Capabilities in LLMs with REL". We include the code for building the datasets, running the experiments, and analyzing the results.
 
-## REL-B
-* All questions along with model outputs are in `bio_data/`. Due to the size of the data it is split up but once you pull you can run rebuild_csv.sh to rebuild the csv file.
-* Code to build these datasets and run the LLMs on the benchmark is available in `bio_benchmark/`
+![Figure 1](assets/fig1.png)
 
-## REL-C
-* The three questions are available at `chem_data/dataset_[c1,c2,c3].jsonl`.
-* Code to build the datasets and run the LLMs on the benchmark is available in `chem_benchmark/`.
-* Paper results are available in `paper_results/chemistry`.
+## Example Questions
+![Figure 2](assets/fig2.png)
 
 ## Benchmark Format
 
@@ -327,4 +325,17 @@ Run tests to see evaluation examples:
 python -m chem_benchmark.test_evaluation
 python -m bio_benchmark.test_evaluation
 python -m algebra_benchmark.test_evaluation
+```
+
+## Citation
+
+If you use this work in your research, please cite:
+
+```bibtex
+@article{fesser2026rel,
+  title={Exploring Relational Reasoning Capabilities in LLMs with REL},
+  author={Fesser, Lukas and Ektefaie, Yasha and Fang, Ada and Kakade, Sham M. and Zitnik, Marinka},
+  journal={},
+  year={2026}
+}
 ```
