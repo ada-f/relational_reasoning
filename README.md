@@ -46,6 +46,61 @@ All datasets follow this common structure:
 - `question`: The question text/prompt
 - `answer`: Object containing domain-specific answer fields
 
+### Algebra Format
+
+**Task types:**
+- `REL-A1`, `REL-A2`, `REL-A3`, `REL-A4`: Raven's Progressive Matrices
+
+**Answer structure:**
+- `target`: Integer index (0-7) of the correct answer in the choices
+
+**Note:** The raw panel data (`panels` and `choices`) is stored in the `metadata` field for reference.
+
+**Example:**
+```json
+{
+  "id": "algebra_REL-A1_00001",
+  "domain": "algebra",
+  "task": "REL-A1",
+  "question": "Complete the Raven's progressive matrix. Only return the missing panel index (1-8)!\n\nPanel 0:\n[639.43, 25.01, 275.03]\n...\n\nAnswer set:\nAnswer 1: [123.45, 67.89, ...]\n...",
+  "answer": {
+    "target": 2
+  },
+  "metadata": {
+    "panels": [[[639.43, 25.01, 275.03], ...], ...],
+    "choices": [[[123.45, 67.89, ...], ...], ...]
+  }
+}
+```
+
+### Biology Format
+
+**Task:**
+- `REL-B1`: Homoplasy detection
+
+**Answer structure:**
+- `label`: "yes" or "no"
+- `taxa`: List of integers (taxa IDs involved in homoplasy, empty if label is "no")
+
+**Validation rules:**
+- If `label` is "yes", `taxa` must be a non-empty list
+- If `label` is "no", `taxa` must be an empty list
+
+**Example:**
+```json
+{
+  "id": "biology_REL-B1_00001",
+  "domain": "biology",
+  "task": "REL-B1",
+  "question": "Homoplasy refers to structured convergence...",
+  "answer": {
+    "label": "yes",
+    "taxa": [15, 49, 18, 28, 20, 39, 29, 42, 16, 31]
+  },
+  "metadata": {}
+}
+```
+
 ### Chemistry Format
 
 **Task types:**
@@ -104,64 +159,93 @@ All datasets follow this common structure:
 }
 ```
 
-### Biology Format
-
-**Task:**
-- `REL-B1`: Homoplasy detection
-
-**Answer structure:**
-- `label`: "yes" or "no"
-- `taxa`: List of integers (taxa IDs involved in homoplasy, empty if label is "no")
-
-**Validation rules:**
-- If `label` is "yes", `taxa` must be a non-empty list
-- If `label` is "no", `taxa` must be an empty list
-
-**Example:**
-```json
-{
-  "id": "biology_REL-B1_00001",
-  "domain": "biology",
-  "task": "REL-B1",
-  "question": "Homoplasy refers to structured convergence...",
-  "answer": {
-    "label": "yes",
-    "taxa": [15, 49, 18, 28, 20, 39, 29, 42, 16, 31]
-  },
-  "metadata": {}
-}
-```
-
-### Algebra Format
-
-**Task types:**
-- `REL-A1`, `REL-A2`, `REL-A3`, `REL-A4`: Raven's Progressive Matrices
-
-**Answer structure:**
-- `target`: Integer index (0-7) of the correct answer in the choices
-
-**Note:** The raw panel data (`panels` and `choices`) is stored in the `metadata` field for reference.
-
-**Example:**
-```json
-{
-  "id": "algebra_REL-A1_00001",
-  "domain": "algebra",
-  "task": "REL-A1",
-  "question": "Complete the Raven's progressive matrix. Only return the missing panel index (1-8)!\n\nPanel 0:\n[639.43, 25.01, 275.03]\n...\n\nAnswer set:\nAnswer 1: [123.45, 67.89, ...]\n...",
-  "answer": {
-    "target": 2
-  },
-  "metadata": {
-    "panels": [[[639.43, 25.01, 275.03], ...], ...],
-    "choices": [[[123.45, 67.89, ...], ...], ...]
-  }
-}
-```
-
 ## Evaluation
 
 Each benchmark provides an `evaluate_response` function that takes a question, answer, and model response, and returns evaluation metrics.
+
+### Algebra Benchmarks (`algebra_benchmark/evaluation.py`)
+
+**Function:** `evaluate_response(question: str, answer: dict, response: str, task: Optional[str] = None, *, n_attr: int = 1, n_return: int = 1) -> dict`
+
+**Response Format:**
+- Response should contain answer index as "Answer N" (where N is 1-8) or just a number (1-8)
+- The function extracts the answer index and converts to 0-based (0-7)
+
+**Input Format:**
+- `question`: The question text from the dataset
+- `answer`: Answer dict with `{"target": int}` (0-based index, 0-7)
+- `response`: Model-generated response text
+- `task`: Optional task identifier ("REL-A1" through "REL-A7")
+- `n_attr`: Number of attributes (for compatibility, default 1)
+- `n_return`: Number of return values (for compatibility, default 1)
+
+**Metrics Computed:**
+- `correct`: bool - True if predicted index matches gold target index
+- `pred`: int - Predicted answer index (0-7, clamped)
+- `gold`: int - Gold target index (0-7)
+
+**Example:**
+```python
+from algebra_benchmark.evaluation import evaluate_response
+
+question = "Complete the Raven's progressive matrix. Only return the missing panel index (1-8)!\n..."
+answer = {"target": 0}  # 0-based index (Answer 1 in 1-based)
+response = "Answer 1"
+
+result = evaluate_response(question, answer, response, task="REL-A1")
+print(result)
+# {
+#   "correct": True,
+#   "pred": 0,
+#   "gold": 0
+# }
+```
+
+### Biology Benchmark (`bio_benchmark/evaluation.py`)
+
+**Function:** `evaluate_response(question: str, answer: dict, response: str, task: Optional[str] = None) -> dict`
+
+**Response Format:**
+- Response should contain "yes" or "no" (case-insensitive)
+- If "yes", response should list taxa IDs (e.g., "taxon_1", "taxon_2" or just numbers)
+
+**Input Format:**
+- `question`: The question text from the dataset
+- `answer`: Answer dict with `{"label": "yes" | "no", "taxa": [int, ...]}`
+- `response`: Model-generated response text
+- `task`: Optional task identifier (defaults to "REL-B1")
+
+**Metrics Computed:**
+- `correct`: bool - True if label matches and (for "yes" answers) there's taxa overlap
+- `pred_label`: str or None - Extracted label ("yes", "no", or None if parsing failed)
+- `gold_label`: str - Gold label ("yes" or "no")
+- `pred_taxa`: list[str] - Extracted taxa IDs from response
+- `gold_taxa`: list[int] - Gold taxa IDs
+- `precision`: float - Taxa precision (-1 if gold_taxa is empty)
+- `recall`: float - Taxa recall (-1 if gold_taxa is empty)
+- `f1`: float - Taxa F1 score (-1 if gold_taxa is empty)
+
+**Example:**
+```python
+from bio_benchmark.evaluation import evaluate_response
+
+question = "Homoplasy refers to structured convergence..."
+answer = {"label": "yes", "taxa": [15, 49, 18, 28, 20]}
+response = "Yes. The taxa involved are taxon_15, taxon_49, taxon_18, taxon_28, taxon_20."
+
+result = evaluate_response(question, answer, response, task="REL-B1")
+print(result)
+# {
+#   "correct": True,
+#   "pred_label": "yes",
+#   "gold_label": "yes",
+#   "pred_taxa": ["15", "49", "18", "28", "20"],
+#   "gold_taxa": [15, 49, 18, 28, 20],
+#   "precision": 1.0,
+#   "recall": 1.0,
+#   "f1": 1.0
+# }
+```
 
 ### Chemistry Benchmarks (`chem_benchmark/evaluation.py`)
 
@@ -229,89 +313,6 @@ print(result)
 # }
 ```
 
-### Biology Benchmark (`bio_benchmark/evaluation.py`)
-
-**Function:** `evaluate_response(question: str, answer: dict, response: str, task: Optional[str] = None) -> dict`
-
-**Response Format:**
-- Response should contain "yes" or "no" (case-insensitive)
-- If "yes", response should list taxa IDs (e.g., "taxon_1", "taxon_2" or just numbers)
-
-**Input Format:**
-- `question`: The question text from the dataset
-- `answer`: Answer dict with `{"label": "yes" | "no", "taxa": [int, ...]}`
-- `response`: Model-generated response text
-- `task`: Optional task identifier (defaults to "REL-B1")
-
-**Metrics Computed:**
-- `correct`: bool - True if label matches and (for "yes" answers) there's taxa overlap
-- `pred_label`: str or None - Extracted label ("yes", "no", or None if parsing failed)
-- `gold_label`: str - Gold label ("yes" or "no")
-- `pred_taxa`: list[str] - Extracted taxa IDs from response
-- `gold_taxa`: list[int] - Gold taxa IDs
-- `precision`: float - Taxa precision (-1 if gold_taxa is empty)
-- `recall`: float - Taxa recall (-1 if gold_taxa is empty)
-- `f1`: float - Taxa F1 score (-1 if gold_taxa is empty)
-
-**Example:**
-```python
-from bio_benchmark.evaluation import evaluate_response
-
-question = "Homoplasy refers to structured convergence..."
-answer = {"label": "yes", "taxa": [15, 49, 18, 28, 20]}
-response = "Yes. The taxa involved are taxon_15, taxon_49, taxon_18, taxon_28, taxon_20."
-
-result = evaluate_response(question, answer, response, task="REL-B1")
-print(result)
-# {
-#   "correct": True,
-#   "pred_label": "yes",
-#   "gold_label": "yes",
-#   "pred_taxa": ["15", "49", "18", "28", "20"],
-#   "gold_taxa": [15, 49, 18, 28, 20],
-#   "precision": 1.0,
-#   "recall": 1.0,
-#   "f1": 1.0
-# }
-```
-
-### Algebra Benchmarks (`algebra_benchmark/evaluation.py`)
-
-**Function:** `evaluate_response(question: str, answer: dict, response: str, task: Optional[str] = None, *, n_attr: int = 1, n_return: int = 1) -> dict`
-
-**Response Format:**
-- Response should contain answer index as "Answer N" (where N is 1-8) or just a number (1-8)
-- The function extracts the answer index and converts to 0-based (0-7)
-
-**Input Format:**
-- `question`: The question text from the dataset
-- `answer`: Answer dict with `{"target": int}` (0-based index, 0-7)
-- `response`: Model-generated response text
-- `task`: Optional task identifier ("REL-A1" through "REL-A7")
-- `n_attr`: Number of attributes (for compatibility, default 1)
-- `n_return`: Number of return values (for compatibility, default 1)
-
-**Metrics Computed:**
-- `correct`: bool - True if predicted index matches gold target index
-- `pred`: int - Predicted answer index (0-7, clamped)
-- `gold`: int - Gold target index (0-7)
-
-**Example:**
-```python
-from algebra_benchmark.evaluation import evaluate_response
-
-question = "Complete the Raven's progressive matrix. Only return the missing panel index (1-8)!\n..."
-answer = {"target": 0}  # 0-based index (Answer 1 in 1-based)
-response = "Answer 1"
-
-result = evaluate_response(question, answer, response, task="REL-A1")
-print(result)
-# {
-#   "correct": True,
-#   "pred": 0,
-#   "gold": 0
-# }
-```
 
 ### Running Tests
 
